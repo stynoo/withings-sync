@@ -328,6 +328,10 @@ def main():
     )
     logging.debug("Script invoked with the following arguments: %s", ARGS)
 
+    if sys.version_info < (3, 0):
+        print("Sorry, requires Python3, not Python2.")
+        sys.exit(1)
+
     if not ARGS.csv_weight_dir:
         ARGS.csv_weight_dir = tempfile.gettempdir()
 
