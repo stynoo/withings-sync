@@ -167,7 +167,8 @@ def prepare_syncdata(height, groups, csv_fullpath):
             )
         if groupdata["hydration"]:
             groupdata["percent_hydration"] = (
-                groupdata["hydration"] * 100.0 / groupdata["weight"]
+                round(groupdata["hydration"] * 100.0 / groupdata["weight"]),
+                2,
             )
 
         logging.debug(
