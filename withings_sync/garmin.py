@@ -92,6 +92,13 @@ class GarminConnect:
             headers=headers,
         )
 
+        if ssoresp.status_code == 429:
+            raise APIException(
+                "SSO error 429: You are being rate limited: "
+                + "The owner of this website (sso.garmin.com) "
+                + "has banned you temporarily from accessing this website."
+            )
+
         if ssoresp.status_code != 200 or "temporarily unavailable" in ssoresp.text:
             raise APIException(f"SSO error {ssoresp.status_code} {ssoresp.text}")
 
