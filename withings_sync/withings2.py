@@ -37,7 +37,7 @@ class WithingsConfig:
     def read(self):
         """reads config file"""
         try:
-            with open(self.config_file) as configfile:
+            with open(self.config_file, encoding="utf8") as configfile:
                 self.config = json.load(configfile)
         except (ValueError, FileNotFoundError):
             log.error("Can't read config file %s", self.config_file)
@@ -45,7 +45,7 @@ class WithingsConfig:
 
     def write(self):
         """writes config file"""
-        with open(self.config_file, "w") as configfile:
+        with open(self.config_file, "w", encoding="utf8") as configfile:
             json.dump(self.config, configfile, indent=4, sort_keys=True)
 
 
@@ -430,7 +430,7 @@ class WithingsMeasure:
 
         type_s = withings_table.get(self.type, ["unknown", ""])[0]
         unit_s = withings_table.get(self.type, ["unknown", ""])[1]
-        return "%s: %s %s" % (type_s, self.get_value(), unit_s)
+        return f"{type_s}: {self.get_value()} {unit_s}"
 
     def get_value(self):
         """get value"""
