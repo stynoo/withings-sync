@@ -93,7 +93,7 @@ class GarminConnect:
         )
 
         if ssoresp.status_code != 200 or "temporarily unavailable" in ssoresp.text:
-            raise APIException("SSO error {ssoresp.status_code} {ssoresp.text}")
+            raise APIException(f"SSO error {ssoresp.status_code} {ssoresp.text}")
 
         if ">sendEvent('FAIL')" in ssoresp.text:
             raise APIException("Invalid login")
