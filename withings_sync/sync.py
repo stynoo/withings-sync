@@ -127,6 +127,7 @@ def generate_fitfile(syncdata):
             bmi=record["bmi"],
         )
     fit.finish()
+    logging.debug("Fit file generated...")
     return fit
 
 
@@ -195,12 +196,14 @@ def prepare_syncdata(height, groups, csv_fullpath):
                 reader = csvfile.read()
                 if str(groupdata["date_time"]) not in reader:
                     logging.debug(
-                        "record for %s not found... adding...", groupdata["date_time"]
+                        "Record for %s not found in csv file... adding...",
+                        groupdata["date_time"],
                     )
                     syncdata.append(groupdata)
                 else:
                     logging.debug(
-                        "record for %s FOUND... skipping...", groupdata["date_time"]
+                        "Record for %s found in csv file... skipping...",
+                        groupdata["date_time"],
                     )
                 csvfile.close()
         except FileNotFoundError:
@@ -219,7 +222,7 @@ def log2csv(csv_fullpath, syncdata):
         with open(csv_fullpath, "r+", newline="", encoding="utf-8") as csvfile:
             csvfile.close()
     except FileNotFoundError:
-        logging.debug("%s: file not found... creating...", csv_fullpath)
+        logging.debug("%s: csv file not found... creating...", csv_fullpath)
         with open(csv_fullpath, "w", newline="", encoding="utf-8") as csvfile:
             writer = csv.writer(csvfile)
             writer.writerow(["Body"])
@@ -228,7 +231,7 @@ def log2csv(csv_fullpath, syncdata):
             )
             csvfile.close()
     else:
-        logging.debug("File %s found...  appending...", csv_fullpath)
+        logging.debug("%s: csv file found...  appending...", csv_fullpath)
     finally:
         with open(csv_fullpath, "a", newline="", encoding="utf-8") as csvfile:
             writer = csv.writer(csvfile)
@@ -302,8 +305,8 @@ def sync():
         logging.info("No Garmin username - skipping sync")
 
     # Log to local csv file
-    logging.debug("Attempting to save data to local file %s", csv_fullpath)
     if trainerroad_sync_ok or garmin_sync_ok:
+        logging.debug("Attempting to save data to local csv file %s", csv_fullpath)
         log2csv(csv_fullpath, syncdata)
         logging.info("Measurements saved to local csv file.")
     else:
