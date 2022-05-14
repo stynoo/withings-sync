@@ -1,5 +1,6 @@
 """This module syncs measurement data from Withings to Garmin a/o TrainerRoad."""
 import argparse
+import csv
 import time
 import sys
 import os
@@ -194,6 +195,25 @@ def generate_jsondata(syncdata):
     return json_data
 
 
+def generate_csvdata(syncdata):
+    """Generate csv data from measured data"""
+    logging.debug("Generating csv data...")
+
+    csv_data = []
+    for record in syncdata:
+        record_data = [
+            str(record["date_time"]),
+            record["weight"],
+            record["bmi"],
+            record["fat_ratio"],
+            record["bone_mass"],
+            record["percent_hydration"],
+            record["muscle_mass"],
+        ]
+        csv_data.append(record_data)
+    return csv_data
+
+
 def prepare_syncdata(height, groups):
     """Prepare measurement data to be sent"""
     syncdata = []
@@ -254,34 +274,67 @@ def prepare_syncdata(height, groups):
             last_date_time = groupdata["date_time"]
             last_weight = groupdata["weight"]
 
-        syncdata.append(groupdata)
-
-    if last_weight is None:
-        logging.error("Invalid or no weight data detected, exiting...")
-        return -1
+        try:
+            with open(CSV_FILENAME, "r", newline="", encoding="utf-8") as csvfile:
+                reader = csvfile.read()
+                if str(groupdata["date_time"]) not in reader:
+                    logging.debug(
+                        "Record for %s not found in csv file... adding...",
+                        groupdata["date_time"],
+                    )
+                    syncdata.append(groupdata)
+                else:
+                    logging.debug(
+                        "Record for %s found in csv file... skipping...",
+                        groupdata["date_time"],
+                    )
+        except FileNotFoundError:
+            logging.debug(
+                "%s: file not found... adding record for %s ...",
+                CSV_FILENAME,
+                groupdata["date_time"],
+            )
+            syncdata.append(groupdata)
 
     return last_weight, last_date_time, syncdata
 
 
-def write_to_file_when_needed(fit_data, json_data):
+def write_to_file_when_needed(fit_data, json_data, csv_data):
     """Write measurements to file when requested"""
-    if ARGS.output is not None:
-        if ARGS.to_fit:
-            filename = ARGS.output + ".fit"
-            logging.info("Writing fitfile to %s.", filename)
-            try:
-                with open(filename, "wb") as fitfile:
-                    fitfile.write(fit_data.getvalue())
-            except OSError:
-                logging.error("Unable to open output fitfile!")
-        if ARGS.to_json:
-            filename = ARGS.output + ".json"
-            logging.info("Writing jsonfile to %s.", filename)
-            try:
-                with open(filename, "w", encoding="utf-8") as jsonfile:
-                    json.dump(json_data, jsonfile, indent=4)
-            except OSError:
-                logging.error("Unable to open output jsonfile!")
+    if ARGS.to_fit:
+        logging.info("Writing fitfile to %s.", FIT_FILENAME)
+        try:
+            with open(FIT_FILENAME, "wb") as fitfile:
+                fitfile.write(fit_data.getvalue())
+        except OSError:
+            logging.error("Unable to open output fitfile!")
+    if ARGS.to_json:
+        logging.info("Writing jsonfile to %s.", JSON_FILENAME)
+        try:
+            with open(JSON_FILENAME, "w", encoding="utf-8") as jsonfile:
+                json.dump(json_data, jsonfile, indent=4)
+        except OSError:
+            logging.error("Unable to open output jsonfile!")
+
+    # We always write a csv file: used to avoid dupes in Garmin Connect
+    try:
+        with open(CSV_FILENAME, "r+", newline="", encoding="utf-8") as csvfile:
+            csvfile.close()
+    except FileNotFoundError:
+        logging.debug("%s: csv file not found... creating...", CSV_FILENAME)
+        with open(CSV_FILENAME, "w", newline="", encoding="utf-8") as csvfile:
+            writer = csv.writer(csvfile)
+            writer.writerow(["Body"])
+            writer.writerow(
+                ["Date", "Weight", "BMI", "Fat", "Bone", "Hydration", "Muscle"]
+            )
+    else:
+        logging.debug("%s: csv file found...  appending...", CSV_FILENAME)
+    finally:
+        with open(CSV_FILENAME, "a", newline="", encoding="utf-8") as csvfile:
+            writer = csv.writer(csvfile)
+            for csv_record in csv_data:
+                writer.writerow(csv_record)
 
 
 def sync():
@@ -318,11 +371,14 @@ def sync():
 
     fit_data = generate_fitdata(syncdata)
     json_data = generate_jsondata(syncdata)
+    csv_data = generate_csvdata(syncdata)
 
-    write_to_file_when_needed(fit_data, json_data)
+    if last_weight is None:
+        logging.error("Invalid or no weight data detected, exiting...")
+        return -1
 
     if ARGS.no_upload:
-        logging.info("Skipping upload")
+        logging.info("dry run: skipping upload & local file generation...")
         return 0
 
     # Upload to Trainer Road
@@ -340,12 +396,21 @@ def sync():
         logging.debug("attempting to upload fit file...")
         if sync_garmin(fit_data):
             logging.info("Fit file uploaded to Garmin Connect")
+            write_to_file_when_needed(fit_data, json_data, csv_data)
     else:
         logging.info("No Garmin username - skipping sync")
     return 0
 
 
 ARGS = get_args()
+if ARGS.output:
+    CSV_FILENAME = ARGS.output + ".csv"
+    FIT_FILENAME = ARGS.output + ".fit"
+    JSON_FILENAME = ARGS.output + ".json"
+else:
+    CSV_FILENAME = "withings-sync-log.csv"
+    FIT_FILENAME = "withings-sync-log.fit"
+    JSON_FILENAME = "withings-sync-log.json"
 
 
 def main():
