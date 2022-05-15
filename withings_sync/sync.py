@@ -7,7 +7,7 @@ import os
 import logging
 import json
 
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 from withings_sync.withings2 import WithingsAccount
 from withings_sync.garmin import GarminConnect
@@ -104,7 +104,7 @@ def get_args():
         "--fromdate",
         "-f",
         type=date_parser,
-        default=date.today - date.timedelta(days=3),
+        default=date.today() - timedelta(days=3),
         metavar="DATE",
     )
     parser.add_argument(
