@@ -100,7 +100,13 @@ def get_args():
         help="password to log in to TrainerRoad.",
     )
 
-    parser.add_argument("--fromdate", "-f", type=date_parser, metavar="DATE")
+    parser.add_argument(
+        "--fromdate",
+        "-f",
+        type=date_parser,
+        default=date.today - date.timedelta(days=3),
+        metavar="DATE",
+    )
     parser.add_argument(
         "--todate", "-t", type=date_parser, default=date.today(), metavar="DATE"
     )
@@ -343,12 +349,9 @@ def sync():
     # Withings API
     withings = WithingsAccount()
 
-    if not ARGS.fromdate:
-        startdate = withings.get_lastsync()
-    else:
-        startdate = int(time.mktime(ARGS.fromdate.timetuple()))
-
+    startdate = int(time.mktime(ARGS.fromdate.timetuple()))
     enddate = int(time.mktime(ARGS.todate.timetuple())) + 86399
+
     logging.info(
         "Fetching measurements from %s to %s",
         time.strftime("%Y-%m-%d %H:%M", time.gmtime(startdate)),
@@ -362,10 +365,6 @@ def sync():
     if groups is None or len(groups) == 0:
         logging.error("No measurements to upload for date or period specified")
         return -1
-
-    # Save this sync so we don't re-download the same data again (if no range has been specified)
-    if not ARGS.fromdate:
-        withings.set_lastsync()
 
     last_weight, last_date_time, syncdata = prepare_syncdata(height, groups)
 
