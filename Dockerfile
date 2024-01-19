@@ -1,4 +1,4 @@
-FROM python:3.10-alpine
+FROM python:3.13.0a3-alpine
 
 # Install python-lxml
 RUN apk add --no-cache --virtual .build-deps \
